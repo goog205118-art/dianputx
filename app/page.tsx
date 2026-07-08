@@ -6,14 +6,25 @@ import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import {
   AlertCircle,
+  ArrowRight,
+  Bot,
+  Braces,
   CheckCircle2,
+  ChevronDown,
+  Code2,
   Download,
   FileSpreadsheet,
+  Home as HomeIcon,
   ImageIcon,
+  Library,
   Loader2,
+  Palette,
   Play,
   Plus,
+  Sparkles,
+  Sun,
   Trash2,
+  Type,
   UploadCloud
 } from "lucide-react";
 
@@ -68,6 +79,16 @@ const templateAccept = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
 };
 
+const sidebarItems = [
+  { label: "工作台", icon: HomeIcon, active: true },
+  { label: "字段", icon: Type },
+  { label: "规则", icon: Palette },
+  { label: "模板库", icon: Library },
+  { label: "AI 就绪", icon: Bot },
+  { label: "接口", icon: Braces },
+  { label: "安装", icon: Code2 }
+];
+
 function formatBytes(bytes: number) {
   if (bytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
@@ -77,10 +98,10 @@ function formatBytes(bytes: number) {
 
 function getFileIcon(file: File) {
   if (file.type.startsWith("image/")) {
-    return <ImageIcon className="h-4 w-4 text-teal-700" aria-hidden="true" />;
+    return <ImageIcon className="h-4 w-4 text-[#1559e8]" aria-hidden="true" />;
   }
 
-  return <FileSpreadsheet className="h-4 w-4 text-amber-700" aria-hidden="true" />;
+  return <FileSpreadsheet className="h-4 w-4 text-[#e36d43]" aria-hidden="true" />;
 }
 
 function DropArea({
@@ -110,13 +131,13 @@ function DropArea({
   });
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-soft">
+    <section className="rounded-lg border border-[#e5e8f0] bg-white p-5 shadow-panel">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-gray-950">{title}</h2>
-          <p className="mt-1 text-sm text-gray-500">{description}</p>
+          <h2 className="text-base font-bold text-[#0d1017]">{title}</h2>
+          <p className="mt-1 text-sm leading-5 text-[#667085]">{description}</p>
         </div>
-        <Plus className="mt-0.5 h-5 w-5 text-gray-400" aria-hidden="true" />
+        <Plus className="mt-0.5 h-5 w-5 text-[#1559e8]" aria-hidden="true" />
       </div>
 
       <div
@@ -124,15 +145,17 @@ function DropArea({
         className={[
           "flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-6 py-8 text-center transition",
           isDragActive
-            ? "border-teal-500 bg-teal-50 text-teal-900"
-            : "border-gray-300 bg-gray-50 text-gray-700 hover:border-teal-400 hover:bg-teal-50/60",
+            ? "border-[#1559e8] bg-[#edf4ff] text-[#0f48c7]"
+            : "border-[#d7deea] bg-[#fbfcff] text-[#1b2533] hover:border-[#1559e8] hover:bg-[#f4f8ff]",
           disabled ? "pointer-events-none opacity-60" : ""
         ].join(" ")}
       >
         <input {...getInputProps()} />
-        <UploadCloud className="mb-3 h-8 w-8 text-teal-700" aria-hidden="true" />
-        <p className="text-sm font-medium">{isDragActive ? "释放文件以上传" : "拖拽文件到这里，或点击选择"}</p>
-        <p className="mt-2 text-xs text-gray-500">{Object.values(accept).flat().join(", ")}</p>
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-float">
+          <UploadCloud className="h-6 w-6 text-[#1559e8]" aria-hidden="true" />
+        </div>
+        <p className="text-sm font-semibold">{isDragActive ? "释放文件以上传" : "拖拽文件到这里，或点击选择"}</p>
+        <p className="mt-2 text-xs text-[#667085]">{Object.values(accept).flat().join(", ")}</p>
       </div>
 
       {fileRejections.length > 0 ? (
@@ -147,19 +170,19 @@ function DropArea({
           {files.map((file, index) => (
             <li
               key={`${file.name}-${file.lastModified}-${index}`}
-              className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3"
+              className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[#e5e8f0] bg-[#fbfcff] px-3"
             >
               <div className="flex min-w-0 items-center gap-3">
                 {getFileIcon(file)}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">{file.name}</p>
-                  <p className="text-xs text-gray-500">{formatBytes(file.size)}</p>
+                  <p className="truncate text-sm font-semibold text-[#111318]">{file.name}</p>
+                  <p className="text-xs text-[#667085]">{formatBytes(file.size)}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => onRemove(index)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 transition hover:bg-white hover:text-red-600"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#667085] transition hover:bg-white hover:text-red-600"
                 aria-label={`移除 ${file.name}`}
                 disabled={disabled}
               >
@@ -502,137 +525,226 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-      <header className="mb-6 flex flex-col justify-between gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end">
-        <div>
-          <p className="mb-2 text-sm font-semibold text-teal-700">内部运营工具</p>
-          <h1 className="text-3xl font-semibold tracking-normal text-gray-950 sm:text-4xl">AI 驱动跨境电商表格处理工作台</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-            上传源 Excel、CSV 或商品截图，再上传目标模板，系统会按模板表头整理数据并导出填好的 Excel。
-          </p>
+    <main className="min-h-screen overflow-hidden bg-[#fbfcff] text-[#111318]">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#e5e8f0] bg-white/95 px-4 backdrop-blur sm:px-7">
+        <div className="flex items-center gap-9">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1559e8] text-white shadow-blue">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <span className="text-xl font-extrabold tracking-normal text-[#101828]">DianpuTX</span>
+          </div>
+
+          <nav className="hidden items-center gap-9 text-sm font-semibold text-[#111318] md:flex" aria-label="主导航">
+            <button type="button" className="inline-flex items-center gap-1.5 transition hover:text-[#1559e8]">
+              工具
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button type="button" className="transition hover:text-[#1559e8]">
+              处理流程
+            </button>
+            <button type="button" className="transition hover:text-[#1559e8]">
+              模板库
+            </button>
+          </nav>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-white p-2 text-center shadow-soft sm:min-w-80">
-          <div className="rounded-md bg-gray-50 px-3 py-2">
-            <p className="text-lg font-semibold text-gray-950">{sourceSummary.sheetCount}</p>
-            <p className="text-xs text-gray-500">表格</p>
-          </div>
-          <div className="rounded-md bg-gray-50 px-3 py-2">
-            <p className="text-lg font-semibold text-gray-950">{sourceSummary.imageCount}</p>
-            <p className="text-xs text-gray-500">图片</p>
-          </div>
-          <div className="rounded-md bg-gray-50 px-3 py-2">
-            <p className="text-lg font-semibold text-gray-950">{templateFile ? 1 : 0}</p>
-            <p className="text-xs text-gray-500">模板</p>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden text-sm font-semibold text-[#111318] sm:inline">Workspace</span>
+          <button
+            type="button"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#1559e8] px-4 text-sm font-bold text-white shadow-blue transition hover:bg-[#0f48c7]"
+          >
+            Excel 工具
+          </button>
         </div>
       </header>
 
-      <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
-        <div className="space-y-5">
-          <DropArea
-            title="源数据"
-            description="支持 Excel、CSV、商品截图，可一次上传多个文件。"
-            files={sourceFiles}
-            accept={sourceAccept}
-            disabled={isProcessing}
-            onDrop={(files) => setSourceFiles((current) => [...current, ...files])}
-            onRemove={(index) => setSourceFiles((current) => current.filter((_, currentIndex) => currentIndex !== index))}
-          />
-
-          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-soft">
-            <label htmlFor="prompt" className="text-base font-semibold text-gray-950">
-              附加处理规则
-            </label>
-            <textarea
-              id="prompt"
-              value={userPrompt}
-              disabled={isProcessing}
-              onChange={(event) => setUserPrompt(event.target.value)}
-              placeholder="例如：金额保留两位小数；SKU 以截图中的款式编号为准；缺失字段留空。"
-              className="mt-4 min-h-40 w-full resize-y rounded-lg border border-gray-300 bg-gray-50 px-4 py-3 text-sm leading-6 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-100 disabled:opacity-60"
-            />
-          </section>
-        </div>
-
-        <aside className="space-y-5">
-          <DropArea
-            title="目标 Excel 模板"
-            description="仅支持 .xlsx，系统会按第一张工作表的表头写入数据。"
-            files={templateFiles}
-            accept={templateAccept}
-            multiple={false}
-            disabled={isProcessing}
-            onDrop={(files) => setTemplateFiles(files.slice(0, 1))}
-            onRemove={() => setTemplateFiles([])}
-          />
-
-          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-soft">
-            <div className="mb-4">
-              <h2 className="text-base font-semibold text-gray-950">模型切换</h2>
-              <p className="mt-1 text-sm text-gray-500">按任务复杂度选择云雾中转模型。</p>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" role="radiogroup" aria-label="选择 AI 模型">
-              {modelOptions.map((option) => {
-                const isSelected = selectedModel === option.id;
-
+      <div className="flex min-h-[calc(100vh-4rem)]">
+        <aside className="hidden w-[84px] shrink-0 flex-col border-r border-[#e5e8f0] bg-white md:flex">
+          <nav className="flex flex-1 flex-col items-center py-5" aria-label="工具导航">
+            <div className="space-y-1">
+              {sidebarItems.map((item) => {
+                const Icon = item.icon;
                 return (
                   <button
-                    key={option.id}
+                    key={item.label}
                     type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    disabled={isProcessing}
-                    onClick={() => setSelectedModel(option.id)}
                     className={[
-                      "min-h-16 rounded-lg border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                      isSelected
-                        ? "border-teal-600 bg-teal-50 text-teal-950 ring-2 ring-teal-100"
-                        : "border-gray-200 bg-gray-50 text-gray-700 hover:border-teal-300 hover:bg-white"
+                      "flex h-[84px] w-[84px] flex-col items-center justify-center gap-2 border-l-4 text-xs font-medium transition",
+                      item.active
+                        ? "border-[#1559e8] bg-[#edf4ff] text-[#1559e8]"
+                        : "border-transparent text-[#475467] hover:bg-[#f4f7fb] hover:text-[#1559e8]"
                     ].join(" ")}
                   >
-                    <span className="block text-sm font-semibold">{option.label}</span>
-                    <span className="mt-1 block text-xs text-gray-500">{option.id}</span>
-                    <span className="mt-1 block text-xs text-gray-500">{option.description}</span>
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                    {item.label}
                   </button>
                 );
               })}
             </div>
-          </section>
+            <div className="mt-auto flex flex-col items-center gap-4 pb-3 text-[#475467]">
+              <Sun className="h-5 w-5" aria-hidden="true" />
+              <span className="text-xs font-bold">v1.1</span>
+            </div>
+          </nav>
+        </aside>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-soft">
-            <div className="flex items-start gap-3">
-              {error ? (
-                <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" aria-hidden="true" />
-              ) : status.includes("完成") ? (
-                <CheckCircle2 className="mt-0.5 h-5 w-5 text-teal-700" aria-hidden="true" />
-              ) : (
-                <Download className="mt-0.5 h-5 w-5 text-gray-500" aria-hidden="true" />
-              )}
-              <div>
-                <h2 className="text-base font-semibold text-gray-950">导出状态</h2>
-                <p className={["mt-1 text-sm", error ? "text-red-700" : "text-gray-500"].join(" ")}>
-                  {error ?? status}
-                </p>
+        <section className="relative flex-1 px-4 py-8 sm:px-8 lg:px-12">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute left-1/2 top-8 h-[780px] w-[780px] -translate-x-1/2 rounded-full border border-[#d9e4ff]" />
+            <div className="absolute left-1/2 top-[-80px] h-[1040px] w-[1040px] -translate-x-1/2 rounded-full border border-[#e6edff]" />
+            <div className="absolute left-1/2 top-[-190px] h-[1260px] w-[1260px] -translate-x-1/2 rounded-full border border-[#eef3ff]" />
+          </div>
+
+          <div className="relative mx-auto max-w-7xl">
+            <div className="mx-auto mb-8 max-w-4xl text-center">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#d9e4ff] bg-white px-4 py-2 text-sm font-bold text-[#1559e8] shadow-float">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                AI 表格处理工作台
+              </div>
+              <h1 className="text-4xl font-extrabold leading-tight tracking-normal text-[#111318] sm:text-5xl lg:text-6xl">
+                跨境店铺表格处理。
+                <span className="block text-[#1559e8]">Fast. Clean. Ready.</span>
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-[#344054]">
+                上传源数据和目标模板，按你的规则生成结构化结果，并直接导出可交付 Excel。
+              </p>
+
+              <div className="mt-6 grid gap-2 text-center sm:grid-cols-3">
+                <div className="rounded-lg border border-[#e5e8f0] bg-white px-4 py-3 shadow-panel">
+                  <p className="text-2xl font-extrabold text-[#111318]">{sourceSummary.sheetCount}</p>
+                  <p className="text-xs font-semibold text-[#667085]">表格</p>
+                </div>
+                <div className="rounded-lg border border-[#e5e8f0] bg-white px-4 py-3 shadow-panel">
+                  <p className="text-2xl font-extrabold text-[#111318]">{sourceSummary.imageCount}</p>
+                  <p className="text-xs font-semibold text-[#667085]">图片</p>
+                </div>
+                <div className="rounded-lg border border-[#e5e8f0] bg-white px-4 py-3 shadow-panel">
+                  <p className="text-2xl font-extrabold text-[#111318]">{templateFile ? 1 : 0}</p>
+                  <p className="text-xs font-semibold text-[#667085]">模板</p>
+                </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={!canSubmit}
-              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-gray-950 px-5 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Play className="h-4 w-4" aria-hidden="true" />
-              )}
-              {isProcessing ? "处理中" : "开始处理并导出"}
-            </button>
-          </section>
-        </aside>
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="space-y-5">
+                <div className="grid gap-5 xl:grid-cols-2">
+                  <DropArea
+                    title="源数据"
+                    description="支持 Excel、CSV、商品截图，可一次上传多个文件。"
+                    files={sourceFiles}
+                    accept={sourceAccept}
+                    disabled={isProcessing}
+                    onDrop={(files) => setSourceFiles((current) => [...current, ...files])}
+                    onRemove={(index) => setSourceFiles((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                  />
+
+                  <DropArea
+                    title="目标 Excel 模板"
+                    description="仅支持 .xlsx，按第一张工作表的表头写入数据。"
+                    files={templateFiles}
+                    accept={templateAccept}
+                    multiple={false}
+                    disabled={isProcessing}
+                    onDrop={(files) => setTemplateFiles(files.slice(0, 1))}
+                    onRemove={() => setTemplateFiles([])}
+                  />
+                </div>
+
+                <section className="rounded-lg border border-[#e5e8f0] bg-white p-5 shadow-panel">
+                  <label htmlFor="prompt" className="text-base font-bold text-[#0d1017]">
+                    附加处理规则
+                  </label>
+                  <textarea
+                    id="prompt"
+                    value={userPrompt}
+                    disabled={isProcessing}
+                    onChange={(event) => setUserPrompt(event.target.value)}
+                    placeholder="例如：金额保留两位小数；SKU 以截图中的款式编号为准；缺失字段留空。"
+                    className="mt-4 min-h-44 w-full resize-y rounded-lg border border-[#d7deea] bg-[#fbfcff] px-4 py-3 text-sm leading-6 text-[#111318] outline-none transition placeholder:text-[#98a2b3] focus:border-[#1559e8] focus:bg-white focus:ring-4 focus:ring-[#d9e4ff] disabled:opacity-60"
+                  />
+                </section>
+              </div>
+
+              <aside className="space-y-5">
+                <section className="rounded-lg border border-[#e5e8f0] bg-white p-5 shadow-panel">
+                  <div className="mb-4">
+                    <h2 className="text-base font-bold text-[#0d1017]">模型切换</h2>
+                    <p className="mt-1 text-sm leading-5 text-[#667085]">按任务复杂度选择云雾中转模型。</p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" role="radiogroup" aria-label="选择 AI 模型">
+                    {modelOptions.map((option) => {
+                      const isSelected = selectedModel === option.id;
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          disabled={isProcessing}
+                          onClick={() => setSelectedModel(option.id)}
+                          className={[
+                            "min-h-20 rounded-lg border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+                            isSelected
+                              ? "border-[#1559e8] bg-[#edf4ff] text-[#0f48c7] ring-2 ring-[#d9e4ff]"
+                              : "border-[#e5e8f0] bg-white text-[#344054] hover:border-[#1559e8] hover:bg-[#f4f8ff]"
+                          ].join(" ")}
+                        >
+                          <span className="block text-sm font-extrabold">{option.label}</span>
+                          <span className="mt-1 block text-xs font-medium text-[#667085]">{option.id}</span>
+                          <span className="mt-1 block text-xs font-semibold text-[#344054]">{option.description}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-[#e5e8f0] bg-white p-5 shadow-panel">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={[
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                        error ? "bg-red-50 text-red-600" : status.includes("完成") ? "bg-emerald-50 text-emerald-600" : "bg-[#edf4ff] text-[#1559e8]"
+                      ].join(" ")}
+                    >
+                      {error ? (
+                        <AlertCircle className="h-5 w-5" aria-hidden="true" />
+                      ) : status.includes("完成") ? (
+                        <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                      ) : (
+                        <Download className="h-5 w-5" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-[#0d1017]">导出状态</h2>
+                      <p className={["mt-1 text-sm leading-5", error ? "text-red-700" : "text-[#667085]"].join(" ")}>
+                        {error ?? status}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={!canSubmit}
+                    className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#1559e8] px-5 text-sm font-extrabold text-white shadow-blue transition hover:bg-[#0f48c7] disabled:cursor-not-allowed disabled:bg-[#d0d5dd] disabled:text-[#667085] disabled:shadow-none"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Play className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    {isProcessing ? "处理中" : "开始处理并导出"}
+                    {!isProcessing ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
+                  </button>
+                </section>
+              </aside>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

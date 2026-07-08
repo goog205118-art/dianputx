@@ -4,7 +4,7 @@
 
 :root {
   color-scheme: light;
-  background: #f6f7f9;
+  background: #fbfcff;
 }
 
 * {
@@ -14,11 +14,8 @@
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    linear-gradient(135deg, rgba(20, 184, 166, 0.12), transparent 34%),
-    linear-gradient(315deg, rgba(245, 158, 11, 0.10), transparent 30%),
-    #f6f7f9;
-  color: #111827;
+  background: #fbfcff;
+  color: #111318;
   font-family:
     Inter,
     ui-sans-serif,
