@@ -1,0 +1,10 @@
+﻿node_modules
+.next
+.env
+.env.local
+.env.*.local
+.vercel
+.codex-run
+.agents
+.DS_Store
+*.log
