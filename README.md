@@ -23,9 +23,12 @@
 
 1. 前端上传源 Excel、CSV、图片，并输入附加规则。
 2. 前端解析源表格为文本、图片为 Data URL、模板首个非空行作为表头。
-3. `/api/generate-excel` 接收预处理数据和模板文件。
+3. `/api/generate-excel` 只接收预处理数据、图片、用户规则、目标表头和模型名，不再上传完整模板文件。
 4. 服务端通过 OpenAI-compatible 中转格式调用云雾中转模型。
-5. 服务端解析 AI 返回的 JSON 数组，用 `exceljs` 写入模板并返回 `.xlsx` 下载流。
+5. 服务端解析 AI 返回的 JSON 数组并返回给浏览器。
+6. 浏览器用本地选择的目标模板和 `exceljs` 写入数据并触发 `.xlsx` 下载。
+
+这个流程可以避免 Vercel API Route 因大模板文件触发 `HTTP 413 Payload Too Large`。
 
 ## 环境变量
 

@@ -1,5 +1,3 @@
-import ExcelJS from "exceljs";
-
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
@@ -206,144 +204,6 @@ async function callAi(payload: ValidatedPayload) {
   }
 }
 
-function getCellText(cell: ExcelJS.Cell) {
-  const value = cell.value;
-
-  if (value == null) {
-    return "";
-  }
-
-  if (typeof value === "object") {
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-
-    if ("text" in value && typeof value.text === "string") {
-      return value.text;
-    }
-
-    if ("result" in value) {
-      return String(value.result ?? "");
-    }
-
-    if ("richText" in value && Array.isArray(value.richText)) {
-      return value.richText.map((part: { text?: string }) => part.text ?? "").join("");
-    }
-  }
-
-  return String(value);
-}
-
-function findHeaderRow(worksheet: ExcelJS.Worksheet, targetHeaders: string[]) {
-  const normalizedTargets = new Set(targetHeaders.map((header) => header.trim()).filter(Boolean));
-  let bestRow = 1;
-  let bestScore = 0;
-
-  worksheet.eachRow((row, rowNumber) => {
-    let score = 0;
-    row.eachCell((cell) => {
-      if (normalizedTargets.has(getCellText(cell).trim())) {
-        score += 1;
-      }
-    });
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestRow = rowNumber;
-    }
-  });
-
-  return bestRow;
-}
-
-function buildHeaderMap(worksheet: ExcelJS.Worksheet, headerRowNumber: number, targetHeaders: string[]) {
-  const headerRow = worksheet.getRow(headerRowNumber);
-  const map = new Map<string, number>();
-
-  headerRow.eachCell((cell, colNumber) => {
-    const header = getCellText(cell).trim();
-    if (header) {
-      map.set(header, colNumber);
-    }
-  });
-
-  let nextColumn = Math.max(headerRow.cellCount, worksheet.columnCount) + 1;
-
-  targetHeaders.forEach((header) => {
-    if (!map.has(header)) {
-      const cell = headerRow.getCell(nextColumn);
-      cell.value = header;
-      map.set(header, nextColumn);
-      nextColumn += 1;
-    }
-  });
-
-  headerRow.commit();
-  return map;
-}
-
-function toExcelValue(value: unknown): ExcelJS.CellValue {
-  if (value == null) {
-    return "";
-  }
-
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-
-  if (value instanceof Date) {
-    return value;
-  }
-
-  return JSON.stringify(value);
-}
-
-function copyRowStyle(sourceRow: ExcelJS.Row, targetRow: ExcelJS.Row, columns: number[]) {
-  columns.forEach((columnNumber) => {
-    const sourceCell = sourceRow.getCell(columnNumber);
-    const targetCell = targetRow.getCell(columnNumber);
-
-    if (sourceCell.style && Object.keys(sourceCell.style).length > 0) {
-      targetCell.style = JSON.parse(JSON.stringify(sourceCell.style));
-    }
-  });
-}
-
-async function fillWorkbook(templateFile: File, targetHeaders: string[], rows: AiRow[]) {
-  const workbook = new ExcelJS.Workbook();
-  const templateBuffer = Buffer.from(await templateFile.arrayBuffer());
-  await workbook.xlsx.load(templateBuffer as unknown as ArrayBuffer);
-
-  const worksheet = workbook.worksheets[0];
-
-  if (!worksheet) {
-    throw new Error("目标模板中没有可写入的工作表。");
-  }
-
-  const headerRowNumber = findHeaderRow(worksheet, targetHeaders);
-  const headerMap = buildHeaderMap(worksheet, headerRowNumber, targetHeaders);
-  const columns = targetHeaders.map((header) => headerMap.get(header)).filter((column): column is number => Boolean(column));
-  const styleSourceRow = worksheet.getRow(headerRowNumber + 1);
-  let nextRowNumber = Math.max(worksheet.actualRowCount, headerRowNumber) + 1;
-
-  rows.forEach((item) => {
-    const row = worksheet.getRow(nextRowNumber);
-    copyRowStyle(styleSourceRow, row, columns);
-
-    targetHeaders.forEach((header) => {
-      const columnNumber = headerMap.get(header);
-      if (columnNumber) {
-        row.getCell(columnNumber).value = toExcelValue(item[header]);
-      }
-    });
-
-    row.commit();
-    nextRowNumber += 1;
-  });
-
-  return workbook.xlsx.writeBuffer();
-}
-
 function resolveModel(value?: string): SupportedModel {
   if (supportedModels.includes(value as SupportedModel)) {
     return value as SupportedModel;
@@ -385,33 +245,28 @@ function validatePayload(payload: GeneratePayload): ValidatedPayload {
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const payloadFile = formData.get("payload");
-    const templateFile = formData.get("template");
+    const rawPayload = (await request.json().catch(() => null)) as GeneratePayload | null;
 
-    if (!(payloadFile instanceof File)) {
-      return jsonResponse(400, "请求中缺少 payload。");
+    if (!rawPayload) {
+      return jsonResponse(400, "请求 JSON 格式无效。");
     }
 
-    if (!(templateFile instanceof File)) {
-      return jsonResponse(400, "请求中缺少目标 Excel 模板。");
-    }
-
-    const rawPayload = JSON.parse(await payloadFile.text()) as GeneratePayload;
     const payload = validatePayload(rawPayload);
     const aiRows = await callAi(payload);
-    const outputBuffer = await fillWorkbook(templateFile, payload.targetHeaders, aiRows);
-    const fileName = `ai-filled-${new Date().toISOString().slice(0, 10)}.xlsx`;
 
-    return new Response(outputBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Cache-Control": "no-store"
+    return Response.json(
+      {
+        rows: aiRows
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store"
+        }
       }
-    });
+    );
   } catch (error) {
+    console.error(error);
     const message = error instanceof Error ? error.message : "服务端处理失败。";
     return jsonResponse(500, message);
   }

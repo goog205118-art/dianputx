@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import ExcelJS from "exceljs";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import {
@@ -33,6 +34,12 @@ type GeneratePayload = {
   userPrompt: string;
   targetHeaders: string[];
   model: AiModel;
+};
+
+type AiRow = Record<string, unknown>;
+
+type GenerateResponse = {
+  rows?: AiRow[];
 };
 
 const modelOptions = [
@@ -243,6 +250,144 @@ function downloadBlob(blob: Blob, fileName: string) {
   URL.revokeObjectURL(href);
 }
 
+function getCellText(cell: ExcelJS.Cell) {
+  const value = cell.value;
+
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "object") {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if ("text" in value && typeof value.text === "string") {
+      return value.text;
+    }
+
+    if ("result" in value) {
+      return String(value.result ?? "");
+    }
+
+    if ("richText" in value && Array.isArray(value.richText)) {
+      return value.richText.map((part: { text?: string }) => part.text ?? "").join("");
+    }
+  }
+
+  return String(value);
+}
+
+function findHeaderRow(worksheet: ExcelJS.Worksheet, targetHeaders: string[]) {
+  const normalizedTargets = new Set(targetHeaders.map((header) => header.trim()).filter(Boolean));
+  let bestRow = 1;
+  let bestScore = 0;
+
+  worksheet.eachRow((row, rowNumber) => {
+    let score = 0;
+    row.eachCell((cell) => {
+      if (normalizedTargets.has(getCellText(cell).trim())) {
+        score += 1;
+      }
+    });
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestRow = rowNumber;
+    }
+  });
+
+  return bestRow;
+}
+
+function buildHeaderMap(worksheet: ExcelJS.Worksheet, headerRowNumber: number, targetHeaders: string[]) {
+  const headerRow = worksheet.getRow(headerRowNumber);
+  const map = new Map<string, number>();
+
+  headerRow.eachCell((cell, colNumber) => {
+    const header = getCellText(cell).trim();
+    if (header) {
+      map.set(header, colNumber);
+    }
+  });
+
+  let nextColumn = Math.max(headerRow.cellCount, worksheet.columnCount) + 1;
+
+  targetHeaders.forEach((header) => {
+    if (!map.has(header)) {
+      const cell = headerRow.getCell(nextColumn);
+      cell.value = header;
+      map.set(header, nextColumn);
+      nextColumn += 1;
+    }
+  });
+
+  headerRow.commit();
+  return map;
+}
+
+function toExcelValue(value: unknown): ExcelJS.CellValue {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  return JSON.stringify(value);
+}
+
+function copyRowStyle(sourceRow: ExcelJS.Row, targetRow: ExcelJS.Row, columns: number[]) {
+  columns.forEach((columnNumber) => {
+    const sourceCell = sourceRow.getCell(columnNumber);
+    const targetCell = targetRow.getCell(columnNumber);
+
+    if (sourceCell.style && Object.keys(sourceCell.style).length > 0) {
+      targetCell.style = JSON.parse(JSON.stringify(sourceCell.style));
+    }
+  });
+}
+
+async function fillWorkbook(templateFile: File, targetHeaders: string[], rows: AiRow[]) {
+  const workbook = new ExcelJS.Workbook();
+  const templateBuffer = await templateFile.arrayBuffer();
+  await workbook.xlsx.load(templateBuffer);
+
+  const worksheet = workbook.worksheets[0];
+
+  if (!worksheet) {
+    throw new Error("目标模板中没有可写入的工作表。");
+  }
+
+  const headerRowNumber = findHeaderRow(worksheet, targetHeaders);
+  const headerMap = buildHeaderMap(worksheet, headerRowNumber, targetHeaders);
+  const columns = targetHeaders.map((header) => headerMap.get(header)).filter((column): column is number => Boolean(column));
+  const styleSourceRow = worksheet.getRow(headerRowNumber + 1);
+  let nextRowNumber = Math.max(worksheet.actualRowCount, headerRowNumber) + 1;
+
+  rows.forEach((item) => {
+    const row = worksheet.getRow(nextRowNumber);
+    copyRowStyle(styleSourceRow, row, columns);
+
+    targetHeaders.forEach((header) => {
+      const columnNumber = headerMap.get(header);
+      if (columnNumber) {
+        row.getCell(columnNumber).value = toExcelValue(item[header]);
+      }
+    });
+
+    row.commit();
+    nextRowNumber += 1;
+  });
+
+  return workbook.xlsx.writeBuffer();
+}
+
 export default function Home() {
   const [sourceFiles, setSourceFiles] = useState<File[]>([]);
   const [templateFiles, setTemplateFiles] = useState<File[]>([]);
@@ -308,15 +453,14 @@ export default function Home() {
         model: selectedModel
       };
 
-      const formData = new FormData();
-      formData.append("payload", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-      formData.append("template", templateFile);
-
       setStatus(`正在请求 ${selectedModel} 生成结构化数据`);
 
       const response = await fetch("/api/generate-excel", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
         signal: controller.signal
       });
 
@@ -328,8 +472,18 @@ export default function Home() {
         throw new Error(message || `处理失败，HTTP ${response.status}`);
       }
 
-      setStatus("正在下载生成后的 Excel");
-      const blob = await response.blob();
+      const body = (await response.json()) as GenerateResponse;
+      const rows = Array.isArray(body.rows) ? body.rows : null;
+
+      if (!rows) {
+        throw new Error("服务端返回数据格式异常。");
+      }
+
+      setStatus("正在写入模板并导出 Excel");
+      const outputBuffer = await fillWorkbook(templateFile, targetHeaders, rows);
+      const blob = new Blob([outputBuffer as BlobPart], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
       downloadBlob(blob, `ai-filled-${new Date().toISOString().slice(0, 10)}.xlsx`);
       setStatus("处理完成，文件已开始下载");
     } catch (caughtError) {
