@@ -32,7 +32,23 @@ type GeneratePayload = {
   images: string[];
   userPrompt: string;
   targetHeaders: string[];
+  model: AiModel;
 };
+
+const modelOptions = [
+  {
+    id: "gemini-3.5-flash",
+    label: "Flash",
+    description: "快速处理"
+  },
+  {
+    id: "gemini-3.1-pro-preview",
+    label: "Pro Preview",
+    description: "复杂识别"
+  }
+] as const;
+
+type AiModel = (typeof modelOptions)[number]["id"];
 
 const sourceAccept = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
@@ -231,6 +247,7 @@ export default function Home() {
   const [sourceFiles, setSourceFiles] = useState<File[]>([]);
   const [templateFiles, setTemplateFiles] = useState<File[]>([]);
   const [userPrompt, setUserPrompt] = useState("");
+  const [selectedModel, setSelectedModel] = useState<AiModel>("gemini-3.5-flash");
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState("等待上传文件");
   const [error, setError] = useState<string | null>(null);
@@ -287,14 +304,15 @@ export default function Home() {
         sourceText: sourceTextBlocks.join("\n\n---\n\n"),
         images,
         userPrompt,
-        targetHeaders
+        targetHeaders,
+        model: selectedModel
       };
 
       const formData = new FormData();
       formData.append("payload", new Blob([JSON.stringify(payload)], { type: "application/json" }));
       formData.append("template", templateFile);
 
-      setStatus("正在请求 AI 生成结构化数据");
+      setStatus(`正在请求 ${selectedModel} 生成结构化数据`);
 
       const response = await fetch("/api/generate-excel", {
         method: "POST",
@@ -394,6 +412,40 @@ export default function Home() {
             onDrop={(files) => setTemplateFiles(files.slice(0, 1))}
             onRemove={() => setTemplateFiles([])}
           />
+
+          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-soft">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-gray-950">模型切换</h2>
+              <p className="mt-1 text-sm text-gray-500">按任务复杂度选择云雾中转模型。</p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" role="radiogroup" aria-label="选择 AI 模型">
+              {modelOptions.map((option) => {
+                const isSelected = selectedModel === option.id;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    disabled={isProcessing}
+                    onClick={() => setSelectedModel(option.id)}
+                    className={[
+                      "min-h-16 rounded-lg border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+                      isSelected
+                        ? "border-teal-600 bg-teal-50 text-teal-950 ring-2 ring-teal-100"
+                        : "border-gray-200 bg-gray-50 text-gray-700 hover:border-teal-300 hover:bg-white"
+                    ].join(" ")}
+                  >
+                    <span className="block text-sm font-semibold">{option.label}</span>
+                    <span className="mt-1 block text-xs text-gray-500">{option.id}</span>
+                    <span className="mt-1 block text-xs text-gray-500">{option.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-soft">
             <div className="flex items-start gap-3">

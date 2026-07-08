@@ -8,9 +8,21 @@ type GeneratePayload = {
   images?: string[];
   userPrompt?: string;
   targetHeaders?: string[];
+  model?: string;
 };
 
 type AiRow = Record<string, unknown>;
+
+type ValidatedPayload = {
+  sourceText: string;
+  images: string[];
+  userPrompt: string;
+  targetHeaders: string[];
+  model: SupportedModel;
+};
+
+const supportedModels = ["gemini-3.5-flash", "gemini-3.1-pro-preview"] as const;
+type SupportedModel = (typeof supportedModels)[number];
 
 const jsonResponse = (status: number, error: string) =>
   Response.json(
@@ -37,7 +49,21 @@ function buildSystemPrompt(targetHeaders: string[]) {
 }
 
 function normalizeBaseUrl(value?: string) {
-  return (value || "https://generativelanguage.googleapis.com/v1beta/openai").replace(/\/+$/, "");
+  const normalized = (value || "https://yunwu.ai").replace(/\/+$/, "");
+
+  try {
+    const parsed = new URL(normalized);
+    const path = parsed.pathname.replace(/\/+$/, "");
+    const hasApiVersion = /\/(v\d+|v\d+beta)(\/|$)/i.test(path);
+
+    if (!path || path === "/") {
+      return `${normalized}/v1`;
+    }
+
+    return hasApiVersion ? normalized : `${normalized}/v1`;
+  } catch {
+    return normalized;
+  }
 }
 
 function getTextFromAiMessage(content: unknown) {
@@ -81,10 +107,10 @@ function extractJsonArray(text: string): AiRow[] {
   return parsed.map((row) => (row && typeof row === "object" && !Array.isArray(row) ? (row as AiRow) : {}));
 }
 
-async function callAi(payload: Required<GeneratePayload>) {
+async function callAi(payload: ValidatedPayload) {
   const apiKey = process.env.AI_API_KEY;
   const baseUrl = normalizeBaseUrl(process.env.AI_BASE_URL);
-  const model = process.env.AI_MODEL || "gemini-1.5-pro";
+  const model = payload.model;
 
   if (!apiKey) {
     throw new Error("服务端缺少 AI_API_KEY 环境变量。");
@@ -318,7 +344,21 @@ async function fillWorkbook(templateFile: File, targetHeaders: string[], rows: A
   return workbook.xlsx.writeBuffer();
 }
 
-function validatePayload(payload: GeneratePayload): Required<GeneratePayload> {
+function resolveModel(value?: string): SupportedModel {
+  if (supportedModels.includes(value as SupportedModel)) {
+    return value as SupportedModel;
+  }
+
+  const fallback = process.env.AI_MODEL;
+
+  if (supportedModels.includes(fallback as SupportedModel)) {
+    return fallback as SupportedModel;
+  }
+
+  return "gemini-3.5-flash";
+}
+
+function validatePayload(payload: GeneratePayload): ValidatedPayload {
   const sourceText = payload.sourceText ?? "";
   const images = Array.isArray(payload.images) ? payload.images : [];
   const userPrompt = payload.userPrompt ?? "";
@@ -338,7 +378,8 @@ function validatePayload(payload: GeneratePayload): Required<GeneratePayload> {
     sourceText,
     images,
     userPrompt,
-    targetHeaders
+    targetHeaders,
+    model: resolveModel(payload.model)
   };
 }
 
